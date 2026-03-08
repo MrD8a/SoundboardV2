@@ -1,0 +1,72 @@
+import { contextBridge, ipcRenderer } from 'electron'
+
+const api = {
+  db: {
+    getTracks: () => ipcRenderer.invoke('db:get-tracks'),
+    getTrack: (id: string) => ipcRenderer.invoke('db:get-track', id),
+    deleteTrack: (id: string) => ipcRenderer.invoke('db:delete-track', id),
+    getPlaylists: () => ipcRenderer.invoke('db:get-playlists'),
+    getPlaylist: (id: string) => ipcRenderer.invoke('db:get-playlist', id),
+    createPlaylist: (name: string, description?: string) =>
+      ipcRenderer.invoke('db:create-playlist', name, description),
+    updatePlaylist: (id: string, name: string, description?: string) =>
+      ipcRenderer.invoke('db:update-playlist', id, name, description),
+    deletePlaylist: (id: string) => ipcRenderer.invoke('db:delete-playlist', id),
+    getPlaylistTracks: (playlistId: string) =>
+      ipcRenderer.invoke('db:get-playlist-tracks', playlistId),
+    addTrackToPlaylist: (playlistId: string, trackId: string) =>
+      ipcRenderer.invoke('db:add-track-to-playlist', playlistId, trackId),
+    removeTrackFromPlaylist: (playlistId: string, trackId: string) =>
+      ipcRenderer.invoke('db:remove-track-from-playlist', playlistId, trackId),
+    reorderPlaylistTracks: (playlistId: string, trackIds: string[]) =>
+      ipcRenderer.invoke('db:reorder-playlist-tracks', playlistId, trackIds),
+    getSetting: (key: string) => ipcRenderer.invoke('db:get-setting', key),
+    setSetting: (key: string, value: string) =>
+      ipcRenderer.invoke('db:set-setting', key, value)
+  },
+  audio: {
+    importFiles: (filePaths: string[]) => ipcRenderer.invoke('audio:import-files', filePaths),
+    getFilePath: (trackId: string) => ipcRenderer.invoke('audio:get-file-path', trackId),
+    showImportDialog: () => ipcRenderer.invoke('audio:show-import-dialog'),
+    importDroppedFiles: (paths: string[]) =>
+      ipcRenderer.invoke('audio:import-dropped-files', paths)
+  },
+  download: {
+    fromUrl: (url: string) => ipcRenderer.invoke('download:from-url', url),
+    onProgress: (callback: (progress: number) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: number): void => {
+        callback(progress)
+      }
+      ipcRenderer.on('download:progress', handler)
+      return () => ipcRenderer.removeListener('download:progress', handler)
+    }
+  },
+  discord: {
+    connect: (token: string) => ipcRenderer.invoke('discord:connect', token),
+    disconnect: () => ipcRenderer.invoke('discord:disconnect'),
+    getGuilds: () => ipcRenderer.invoke('discord:get-guilds'),
+    getVoiceChannels: (guildId: string) =>
+      ipcRenderer.invoke('discord:get-voice-channels', guildId),
+    joinChannel: (guildId: string, channelId: string) =>
+      ipcRenderer.invoke('discord:join-channel', guildId, channelId),
+    leaveChannel: () => ipcRenderer.invoke('discord:leave-channel'),
+    playTrack: (filePath: string) => ipcRenderer.invoke('discord:play-track', filePath),
+    stopTrack: () => ipcRenderer.invoke('discord:stop-track'),
+    onStatusChange: (callback: (status: string) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, status: string): void => {
+        callback(status)
+      }
+      ipcRenderer.on('discord:status-change', handler)
+      return () => ipcRenderer.removeListener('discord:status-change', handler)
+    }
+  }
+}
+
+export type SoundboardAPI = typeof api
+
+if (process.contextIsolated) {
+  contextBridge.exposeInMainWorld('api', api)
+} else {
+  // @ts-expect-error fallback for non-isolated context
+  window.api = api
+}

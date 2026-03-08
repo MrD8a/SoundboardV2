@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-obsidian-950 text-obsidian-100 font-body;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-obsidian-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-obsidian-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-obsidian-500;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-arcane-600 hover:bg-arcane-500 text-white rounded-lg
+           transition-colors duration-150 font-medium text-sm;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-obsidian-700 hover:bg-obsidian-600 text-obsidian-100 rounded-lg
+           transition-colors duration-150 font-medium text-sm;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-dragon-600 hover:bg-dragon-500 text-white rounded-lg
+           transition-colors duration-150 font-medium text-sm;
+  }
+
+  .input-field {
+    @apply px-3 py-2 bg-obsidian-800 border border-obsidian-600 rounded-lg
+           text-obsidian-100 placeholder-obsidian-400 text-sm
+           focus:outline-none focus:ring-2 focus:ring-arcane-500 focus:border-transparent;
+  }
+}
