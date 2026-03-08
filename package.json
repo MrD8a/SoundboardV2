@@ -4,7 +4,7 @@
   "description": "DnD atmosphere soundboard with Discord voice integration",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "ELECTRON_DISABLE_SANDBOX=1 electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run",
@@ -29,11 +29,17 @@
       "!node_modules/.cache"
     ],
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Audio"
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -41,7 +47,9 @@
     }
   },
   "dependencies": {
-    "@discordjs/voice": "^0.18.0",
+    "@discordjs/voice": "^0.19.0",
+    "@snazzah/davey": "^0.1.10",
+    "@stablelib/xchacha20poly1305": "^2.0.1",
     "better-sqlite3": "^11.7.0",
     "discord.js": "^14.25.1",
     "howler": "^2.2.4",

@@ -33,10 +33,17 @@ interface ImportedTrack {
   createdAt: string
 }
 
+interface MetadataOverrides {
+  title?: string
+  artist?: string
+  duration?: number
+}
+
 export async function importAudioFile(
   sourcePath: string,
   source: 'import' | 'youtube' = 'import',
-  sourceUrl = ''
+  sourceUrl = '',
+  overrides: MetadataOverrides = {}
 ): Promise<ImportedTrack> {
   if (!existsSync(sourcePath)) {
     throw new Error(`File not found: ${sourcePath}`)
@@ -54,17 +61,19 @@ export async function importAudioFile(
   copyFileSync(sourcePath, destPath)
 
   const stats = statSync(destPath)
-  let title = basename(sourcePath, ext)
-  let artist = ''
-  let duration = 0
+  let title = overrides.title || basename(sourcePath, ext)
+  let artist = overrides.artist || ''
+  let duration = overrides.duration || 0
 
-  try {
-    const metadata = await parseFile(destPath)
-    title = metadata.common.title || title
-    artist = metadata.common.artist || ''
-    duration = metadata.format.duration || 0
-  } catch {
-    // Metadata extraction failed; use filename-based defaults
+  if (!overrides.title || !overrides.duration) {
+    try {
+      const metadata = await parseFile(destPath)
+      if (!overrides.title) title = metadata.common.title || title
+      if (!overrides.artist) artist = metadata.common.artist || artist
+      if (!overrides.duration) duration = metadata.format.duration || duration
+    } catch {
+      // Metadata extraction failed; use overrides or filename-based defaults
+    }
   }
 
   const format = ext.replace('.', '')

@@ -1,20 +1,17 @@
-const { mkdirSync, writeFileSync, existsSync } = require('fs')
-const { join } = require('path')
+const { execSync } = require('child_process')
+const { join, dirname } = require('path')
+const { existsSync } = require('fs')
 
-const stubs = {
-  'zlib-sync': 'module.exports = null;',
-  'bufferutil': 'module.exports = {};',
-  'utf-8-validate': 'module.exports = {};',
-  'erlpack': 'module.exports = null;'
-}
-
-const nodeModules = join(__dirname, '..', 'node_modules')
-
-for (const [name, code] of Object.entries(stubs)) {
-  const dir = join(nodeModules, name)
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version: '0.0.0', main: 'index.js' }))
-    writeFileSync(join(dir, 'index.js'), code)
+const electronDir = join(__dirname, '..', 'node_modules', 'electron')
+if (existsSync(electronDir)) {
+  try {
+    const electronVersion = require(join(electronDir, 'package.json')).version
+    execSync(
+      `npx prebuild-install --runtime electron --target ${electronVersion}`,
+      { cwd: join(__dirname, '..', 'node_modules', 'better-sqlite3'), stdio: 'inherit' }
+    )
+    console.log(`Rebuilt better-sqlite3 for Electron ${electronVersion}`)
+  } catch {
+    console.warn('Could not rebuild better-sqlite3 for Electron — may fail at runtime')
   }
 }

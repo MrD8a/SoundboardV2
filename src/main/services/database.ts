@@ -1,7 +1,12 @@
-import Database from 'better-sqlite3'
+import type Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
+import { createRequire } from 'node:module'
+
+// Runtime require for native module that can't be bundled by Vite
+const _require = createRequire(import.meta.url)
+const BetterSqlite3 = _require('better-sqlite3') as typeof Database
 
 let db: Database.Database
 
@@ -21,7 +26,7 @@ export function initDatabase(): void {
   }
 
   const dbPath = join(dataDir, 'soundboard.db')
-  db = new Database(dbPath)
+  db = new BetterSqlite3(dbPath)
 
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')

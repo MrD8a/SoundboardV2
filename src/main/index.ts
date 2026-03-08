@@ -1,8 +1,16 @@
-import { app, BrowserWindow, shell, globalShortcut } from 'electron'
+import { app, BrowserWindow, shell, globalShortcut, net, protocol } from 'electron'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase, closeDatabase } from './services/database'
 import { registerIpcHandlers } from './services/ipc-handlers'
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local-audio',
+    privileges: { bypassCSP: true, stream: true, supportFetchAPI: true }
+  }
+])
 
 let mainWindow: BrowserWindow | null = null
 
@@ -40,6 +48,11 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.soundboard.v2')
+
+  protocol.handle('local-audio', (request) => {
+    const filePath = decodeURIComponent(request.url.replace('local-audio://', ''))
+    return net.fetch(pathToFileURL(filePath).href)
+  })
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
