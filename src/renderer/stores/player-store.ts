@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Howl } from 'howler'
 import type { Track, RepeatMode } from '../types'
+import { useDiscordStore } from './discord-store'
 
 interface PlayerState {
   currentTrack: Track | null
@@ -39,6 +40,18 @@ function getShuffledIndex(current: number, length: number): number {
   return next
 }
 
+function shouldMirror(): boolean {
+  return useDiscordStore.getState().isInChannel
+}
+
+async function resolveFilePath(track: Track): Promise<string | null> {
+  try {
+    return await window.api.audio.getFilePath(track.id)
+  } catch {
+    return null
+  }
+}
+
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: null,
   queue: [],
@@ -68,7 +81,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     const howl = new Howl({
-      src: [`file://${track.filePath}`],
+      src: [`local-audio://${encodeURIComponent(track.filePath)}`],
       volume: state.volume,
       html5: true,
       onload: () => {
@@ -108,23 +121,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     howl.play()
     set({ currentTrack: track, _howl: howl, progress: 0 })
+
+    if (shouldMirror()) {
+      resolveFilePath(track).then((fp) => {
+        if (fp) window.api.discord.streamPlay(fp, 0, get().volume)
+      })
+    }
   },
 
   pause: () => {
     get()._howl?.pause()
+    if (shouldMirror()) window.api.discord.streamPause()
   },
 
   resume: () => {
     get()._howl?.play()
+    if (shouldMirror()) window.api.discord.streamResume()
   },
 
   togglePlayPause: () => {
     const { isPlaying, _howl } = get()
     if (!_howl) return
     if (isPlaying) {
-      _howl.pause()
+      get().pause()
     } else {
-      _howl.play()
+      get().resume()
     }
   },
 
@@ -145,6 +166,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       progress: 0,
       duration: 0
     })
+
+    if (shouldMirror()) window.api.discord.streamStop()
   },
 
   next: () => {
@@ -194,10 +217,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   seek: (time: number) => {
-    const { _howl } = get()
+    const { _howl, currentTrack } = get()
     if (_howl) {
       _howl.seek(time)
       set({ progress: time })
+    }
+
+    if (shouldMirror() && currentTrack) {
+      resolveFilePath(currentTrack).then((fp) => {
+        if (fp) window.api.discord.streamSeek(fp, time)
+      })
     }
   },
 
@@ -208,6 +237,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       _howl.volume(clamped)
     }
     set({ volume: clamped })
+
+    if (shouldMirror()) window.api.discord.streamSetVolume(clamped)
   },
 
   setRepeatMode: (mode: RepeatMode) => {

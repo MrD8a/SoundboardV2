@@ -1,37 +1,132 @@
-import {
-  Client,
+import type { Client, Guild, VoiceBasedChannel } from 'discord.js'
+import type { VoiceConnection, AudioPlayer, AudioResource } from '@discordjs/voice'
+import { BrowserWindow } from 'electron'
+import { createRequire } from 'node:module'
+import { spawn, type ChildProcess } from 'node:child_process'
+import { dirname } from 'node:path'
+import { existsSync } from 'node:fs'
+import { execSync } from 'node:child_process'
+
+const _require = createRequire(import.meta.url)
+const {
+  Client: ClientClass,
   GatewayIntentBits,
-  ChannelType,
-  type Guild,
-  type VoiceBasedChannel
-} from 'discord.js'
-import {
+  ChannelType
+} = _require('discord.js') as typeof import('discord.js')
+const {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
   AudioPlayerStatus,
   VoiceConnectionStatus,
   entersState,
-  type VoiceConnection,
-  type AudioPlayer
-} from '@discordjs/voice'
-import { BrowserWindow } from 'electron'
+  StreamType
+} = _require('@discordjs/voice') as typeof import('@discordjs/voice')
 
 let client: Client | null = null
 let connection: VoiceConnection | null = null
 let player: AudioPlayer | null = null
+let currentResource: AudioResource | null = null
+let currentFfmpegProc: ChildProcess | null = null
 
 function sendStatus(status: string): void {
   const windows = BrowserWindow.getAllWindows()
   windows.forEach((w) => w.webContents.send('discord:status-change', status))
 }
 
+const home = process.env.HOME || process.env.USERPROFILE || ''
+const localBin = home ? `${home}/.local/bin` : ''
+
+function findFfmpeg(): string | null {
+  const candidates = ['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg']
+  if (localBin) candidates.unshift(`${localBin}/ffmpeg`)
+
+  for (const p of candidates) {
+    if (existsSync(p)) return p
+  }
+
+  try {
+    const which = execSync('which ffmpeg', { encoding: 'utf-8' }).trim()
+    if (which) return which
+  } catch { /* not found */ }
+
+  return null
+}
+
+function killCurrentFfmpeg(): void {
+  if (currentFfmpegProc && !currentFfmpegProc.killed) {
+    currentFfmpegProc.kill('SIGKILL')
+    currentFfmpegProc = null
+  }
+}
+
+function ensurePlayer(): void {
+  if (!connection) throw new Error('Not connected to a voice channel')
+
+  if (!player) {
+    player = createAudioPlayer()
+    connection.subscribe(player)
+
+    player.on('error', (err) => {
+      console.error('Audio player error:', err)
+      sendStatus('player-error')
+    })
+
+    player.on(AudioPlayerStatus.Idle, () => {
+      killCurrentFfmpeg()
+      currentResource = null
+      sendStatus('in-channel')
+    })
+
+    player.on(AudioPlayerStatus.Playing, () => {
+      sendStatus('playing')
+    })
+  }
+}
+
+function createSeekableResource(
+  filePath: string,
+  seekSeconds: number,
+  volume: number
+): AudioResource {
+  killCurrentFfmpeg()
+
+  const ffmpegPath = findFfmpeg() || 'ffmpeg'
+  const args = [
+    '-hide_banner',
+    '-loglevel', 'error',
+    ...(seekSeconds > 0 ? ['-ss', String(seekSeconds)] : []),
+    '-i', filePath,
+    '-f', 's16le',
+    '-ar', '48000',
+    '-ac', '2',
+    'pipe:1'
+  ]
+
+  const proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'ignore'] })
+  currentFfmpegProc = proc
+
+  proc.on('error', (err) => {
+    console.error('FFmpeg spawn error:', err)
+  })
+
+  const resource = createAudioResource(proc.stdout!, {
+    inputType: StreamType.Raw,
+    inlineVolume: true
+  })
+
+  resource.volume?.setVolume(volume)
+  return resource
+}
+
+// --- Public API ---
+
 export async function connectBot(token: string): Promise<{ username: string }> {
   if (client) {
     await disconnectBot()
   }
 
-  client = new Client({
+  client = new ClientClass({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates]
   })
 
@@ -42,7 +137,7 @@ export async function connectBot(token: string): Promise<{ username: string }> {
       client = null
     }, 15000)
 
-    client!.once('ready', () => {
+    client!.once('clientReady', () => {
       clearTimeout(timeout)
       const username = client!.user?.tag || 'Unknown Bot'
       sendStatus('connected')
@@ -63,6 +158,7 @@ export async function connectBot(token: string): Promise<{ username: string }> {
 }
 
 export async function disconnectBot(): Promise<void> {
+  streamStop()
   if (connection) {
     connection.destroy()
     connection = null
@@ -105,10 +201,7 @@ export function getVoiceChannels(
     }))
 }
 
-export async function joinChannel(
-  guildId: string,
-  channelId: string
-): Promise<void> {
+export async function joinChannel(guildId: string, channelId: string): Promise<void> {
   if (!client) throw new Error('Bot not connected')
 
   const guild = client.guilds.cache.get(guildId)
@@ -132,53 +225,61 @@ export async function joinChannel(
   })
 
   try {
-    await entersState(connection, VoiceConnectionStatus.Ready, 10_000)
+    await entersState(connection, VoiceConnectionStatus.Ready, 30_000)
     sendStatus('in-channel')
   } catch {
     connection.destroy()
     connection = null
-    throw new Error('Failed to join voice channel within 10 seconds')
+    throw new Error('Failed to join voice channel within 30 seconds')
   }
 }
 
 export function leaveChannel(): void {
-  if (player) {
-    player.stop(true)
-    player = null
-  }
+  streamStop()
   if (connection) {
     connection.destroy()
     connection = null
   }
+  if (player) {
+    player.stop(true)
+    player = null
+  }
   sendStatus('connected')
 }
 
-export function playTrackInChannel(filePath: string): void {
-  if (!connection) throw new Error('Not connected to a voice channel')
+// --- Synchronized streaming API ---
 
-  if (!player) {
-    player = createAudioPlayer()
-    connection.subscribe(player)
-
-    player.on('error', (err) => {
-      console.error('Audio player error:', err)
-      sendStatus('player-error')
-    })
-
-    player.on(AudioPlayerStatus.Idle, () => {
-      sendStatus('in-channel')
-    })
-
-    player.on(AudioPlayerStatus.Playing, () => {
-      sendStatus('playing')
-    })
-  }
-
-  const resource = createAudioResource(filePath)
-  player.play(resource)
+export function streamPlay(filePath: string, seekSeconds: number, volume: number): void {
+  if (!connection) return
+  ensurePlayer()
+  currentResource = createSeekableResource(filePath, seekSeconds, volume)
+  player!.play(currentResource)
 }
 
-export function stopTrackInChannel(): void {
+export function streamSeek(filePath: string, seekSeconds: number): void {
+  if (!connection || !player) return
+  const vol = currentResource?.volume?.volume ?? 1
+  currentResource = createSeekableResource(filePath, seekSeconds, vol)
+  player.play(currentResource)
+}
+
+export function streamSetVolume(volume: number): void {
+  if (currentResource?.volume) {
+    currentResource.volume.setVolume(volume)
+  }
+}
+
+export function streamPause(): void {
+  player?.pause()
+}
+
+export function streamResume(): void {
+  player?.unpause()
+}
+
+export function streamStop(): void {
+  killCurrentFfmpeg()
+  currentResource = null
   if (player) {
     player.stop(true)
   }

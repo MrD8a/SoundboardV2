@@ -15,8 +15,12 @@ import {
   getVoiceChannels,
   joinChannel,
   leaveChannel,
-  playTrackInChannel,
-  stopTrackInChannel
+  streamPlay,
+  streamSeek,
+  streamSetVolume,
+  streamPause,
+  streamResume,
+  streamStop
 } from './discord'
 
 export function registerIpcHandlers(): void {
@@ -210,13 +214,39 @@ function registerDiscordHandlers(): void {
     return true
   })
 
-  ipcMain.handle('discord:play-track', (_event, filePath: string) => {
-    playTrackInChannel(filePath)
+  ipcMain.handle(
+    'discord:stream-play',
+    (_event, filePath: string, seekSeconds: number, volume: number) => {
+      streamPlay(filePath, seekSeconds, volume)
+      return true
+    }
+  )
+
+  ipcMain.handle(
+    'discord:stream-seek',
+    (_event, filePath: string, seekSeconds: number) => {
+      streamSeek(filePath, seekSeconds)
+      return true
+    }
+  )
+
+  ipcMain.handle('discord:stream-set-volume', (_event, volume: number) => {
+    streamSetVolume(volume)
     return true
   })
 
-  ipcMain.handle('discord:stop-track', () => {
-    stopTrackInChannel()
+  ipcMain.handle('discord:stream-pause', () => {
+    streamPause()
+    return true
+  })
+
+  ipcMain.handle('discord:stream-resume', () => {
+    streamResume()
+    return true
+  })
+
+  ipcMain.handle('discord:stream-stop', () => {
+    streamStop()
     return true
   })
 }

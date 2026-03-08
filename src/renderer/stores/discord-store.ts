@@ -19,8 +19,6 @@ interface DiscordState {
   selectGuild: (guildId: string) => Promise<void>
   joinChannel: (channelId: string) => Promise<void>
   leaveChannel: () => Promise<void>
-  playTrack: (filePath: string) => Promise<void>
-  stopTrack: () => Promise<void>
   setStatus: (status: string) => void
   clearError: () => void
 }
@@ -102,24 +100,6 @@ export const useDiscordStore = create<DiscordState>((set, get) => ({
       await window.api.discord.leaveChannel()
     } finally {
       set({ selectedChannelId: null, isInChannel: false, status: 'connected' })
-    }
-  },
-
-  playTrack: async (filePath: string) => {
-    try {
-      await window.api.discord.playTrack(filePath)
-      set({ status: 'playing' })
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : 'Playback failed' })
-    }
-  },
-
-  stopTrack: async () => {
-    try {
-      await window.api.discord.stopTrack()
-      set({ status: 'in-channel' })
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : 'Stop failed' })
     }
   },
 

@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useDiscordStore } from '../../stores/discord-store'
-import { usePlayerStore } from '../../stores/player-store'
 
 export const DiscordView: React.FC = () => {
   const {
@@ -19,13 +18,10 @@ export const DiscordView: React.FC = () => {
     selectGuild,
     joinChannel,
     leaveChannel,
-    playTrack,
-    stopTrack,
     setStatus,
     clearError
   } = useDiscordStore()
 
-  const currentTrack = usePlayerStore((s) => s.currentTrack)
   const [token, setToken] = useState('')
   const [showToken, setShowToken] = useState(false)
 
@@ -40,14 +36,6 @@ export const DiscordView: React.FC = () => {
     if (!token.trim()) return
     await connect(token.trim())
   }, [token, connect])
-
-  const handleStreamCurrent = useCallback(async () => {
-    if (!currentTrack) return
-    const filePath = await window.api.audio.getFilePath(currentTrack.id)
-    if (filePath) {
-      await playTrack(filePath)
-    }
-  }, [currentTrack, playTrack])
 
   const statusColor: Record<string, string> = {
     disconnected: 'text-obsidian-400',
@@ -215,36 +203,18 @@ export const DiscordView: React.FC = () => {
         </div>
       )}
 
-      {/* Streaming controls */}
+      {/* Auto-stream indicator */}
       {isInChannel && (
-        <div className="bg-obsidian-800 rounded-xl p-4 space-y-3">
-          <h3 className="text-sm font-medium text-obsidian-200">Stream Audio</h3>
-
+        <div className="bg-obsidian-800 rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleStreamCurrent}
-              disabled={!currentTrack}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {status === 'playing' ? 'Streaming...' : 'Stream Current Track'}
-            </button>
-
-            {status === 'playing' && (
-              <button onClick={stopTrack} className="btn-danger">
-                Stop Stream
-              </button>
-            )}
+            <div className="w-2.5 h-2.5 rounded-full bg-arcane-400 animate-pulse" />
+            <div>
+              <p className="text-sm font-medium text-obsidian-200">Auto-streaming active</p>
+              <p className="text-xs text-obsidian-400">
+                Playback, volume, and seek are synced to the voice channel.
+              </p>
+            </div>
           </div>
-
-          {currentTrack ? (
-            <p className="text-xs text-obsidian-400">
-              Current track: <span className="text-obsidian-200">{currentTrack.title}</span>
-            </p>
-          ) : (
-            <p className="text-xs text-obsidian-500">
-              Play a track from the Library to stream it.
-            </p>
-          )}
         </div>
       )}
 

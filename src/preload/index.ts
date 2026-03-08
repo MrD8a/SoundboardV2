@@ -51,8 +51,15 @@ const api = {
     joinChannel: (guildId: string, channelId: string) =>
       ipcRenderer.invoke('discord:join-channel', guildId, channelId),
     leaveChannel: () => ipcRenderer.invoke('discord:leave-channel'),
-    playTrack: (filePath: string) => ipcRenderer.invoke('discord:play-track', filePath),
-    stopTrack: () => ipcRenderer.invoke('discord:stop-track'),
+    streamPlay: (filePath: string, seekSeconds: number, volume: number) =>
+      ipcRenderer.invoke('discord:stream-play', filePath, seekSeconds, volume),
+    streamSeek: (filePath: string, seekSeconds: number) =>
+      ipcRenderer.invoke('discord:stream-seek', filePath, seekSeconds),
+    streamSetVolume: (volume: number) =>
+      ipcRenderer.invoke('discord:stream-set-volume', volume),
+    streamPause: () => ipcRenderer.invoke('discord:stream-pause'),
+    streamResume: () => ipcRenderer.invoke('discord:stream-resume'),
+    streamStop: () => ipcRenderer.invoke('discord:stream-stop'),
     onStatusChange: (callback: (status: string) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, status: string): void => {
         callback(status)
