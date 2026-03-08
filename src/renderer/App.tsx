@@ -4,6 +4,7 @@ import { PlayerBar } from './components/Player'
 import { LibraryView } from './components/Library'
 import { PlaylistView } from './components/Playlist'
 import { DownloadView } from './components/Download'
+import { DiscordView } from './components/Discord'
 import { usePlayerStore } from './stores/player-store'
 import { useLibraryStore } from './stores/library-store'
 import type { Track } from './types'
@@ -55,11 +56,7 @@ function App(): React.JSX.Element {
             <PlaylistView onPlayTrack={handlePlayTrackFromPlaylist} />
           )}
           {activeView === 'download' && <DownloadView />}
-          {activeView === 'discord' && (
-            <p className="text-obsidian-400 text-sm">
-              Connect your Discord bot and stream audio to voice channels.
-            </p>
-          )}
+          {activeView === 'discord' && <DiscordView />}
         </main>
       </div>
       <PlayerBar />

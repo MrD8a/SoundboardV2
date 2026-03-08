@@ -8,11 +8,22 @@ import {
   getTrackFilePath
 } from './audio-manager'
 import { downloadAudio, getVideoInfo } from './downloader'
+import {
+  connectBot,
+  disconnectBot,
+  getGuilds,
+  getVoiceChannels,
+  joinChannel,
+  leaveChannel,
+  playTrackInChannel,
+  stopTrackInChannel
+} from './discord'
 
 export function registerIpcHandlers(): void {
   registerDbHandlers()
   registerAudioHandlers()
   registerDownloadHandlers()
+  registerDiscordHandlers()
 }
 
 function registerDbHandlers(): void {
@@ -165,5 +176,47 @@ function registerDownloadHandlers(): void {
     return downloadAudio(url, (progress) => {
       event.sender.send('download:progress', progress)
     })
+  })
+}
+
+function registerDiscordHandlers(): void {
+  ipcMain.handle('discord:connect', async (_event, token: string) => {
+    return connectBot(token)
+  })
+
+  ipcMain.handle('discord:disconnect', async () => {
+    await disconnectBot()
+    return true
+  })
+
+  ipcMain.handle('discord:get-guilds', () => {
+    return getGuilds()
+  })
+
+  ipcMain.handle('discord:get-voice-channels', (_event, guildId: string) => {
+    return getVoiceChannels(guildId)
+  })
+
+  ipcMain.handle(
+    'discord:join-channel',
+    async (_event, guildId: string, channelId: string) => {
+      await joinChannel(guildId, channelId)
+      return true
+    }
+  )
+
+  ipcMain.handle('discord:leave-channel', () => {
+    leaveChannel()
+    return true
+  })
+
+  ipcMain.handle('discord:play-track', (_event, filePath: string) => {
+    playTrackInChannel(filePath)
+    return true
+  })
+
+  ipcMain.handle('discord:stop-track', () => {
+    stopTrackInChannel()
+    return true
   })
 }
