@@ -1,9 +1,16 @@
 import { ipcMain } from 'electron'
 import { getDb } from './database'
 import { v4 as uuidv4 } from 'uuid'
+import {
+  importMultipleFiles,
+  showImportDialog,
+  deleteTrackFile,
+  getTrackFilePath
+} from './audio-manager'
 
 export function registerIpcHandlers(): void {
   registerDbHandlers()
+  registerAudioHandlers()
 }
 
 function registerDbHandlers(): void {
@@ -16,7 +23,7 @@ function registerDbHandlers(): void {
   })
 
   ipcMain.handle('db:delete-track', (_event, id: string) => {
-    getDb().prepare('DELETE FROM tracks WHERE id = ?').run(id)
+    deleteTrackFile(id)
     return true
   })
 
@@ -126,5 +133,23 @@ function registerDbHandlers(): void {
       )
       .run(key, value, value)
     return true
+  })
+}
+
+function registerAudioHandlers(): void {
+  ipcMain.handle('audio:import-files', async (_event, filePaths: string[]) => {
+    return importMultipleFiles(filePaths)
+  })
+
+  ipcMain.handle('audio:show-import-dialog', async () => {
+    return showImportDialog()
+  })
+
+  ipcMain.handle('audio:import-dropped-files', async (_event, paths: string[]) => {
+    return importMultipleFiles(paths)
+  })
+
+  ipcMain.handle('audio:get-file-path', (_event, trackId: string) => {
+    return getTrackFilePath(trackId)
   })
 }
