@@ -2,6 +2,8 @@ import React, { useState, useCallback } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { PlayerBar } from './components/Player'
 import { LibraryView } from './components/Library'
+import { usePlayerStore } from './stores/player-store'
+import { useLibraryStore } from './stores/library-store'
 import type { Track } from './types'
 
 const viewLabels: Record<string, string> = {
@@ -13,10 +15,19 @@ const viewLabels: Record<string, string> = {
 
 function App(): React.JSX.Element {
   const [activeView, setActiveView] = useState('library')
+  const playTrack = usePlayerStore((s) => s.playTrack)
+  const setQueue = usePlayerStore((s) => s.setQueue)
+  const getFilteredTracks = useLibraryStore((s) => s.getFilteredTracks)
 
-  const handlePlayTrack = useCallback((_track: Track) => {
-    // Will be implemented in Phase 3 (Audio Player)
-  }, [])
+  const handlePlayTrack = useCallback(
+    (track: Track) => {
+      const allTracks = getFilteredTracks()
+      const idx = allTracks.findIndex((t) => t.id === track.id)
+      setQueue(allTracks, idx >= 0 ? idx : 0)
+      playTrack(track, allTracks)
+    },
+    [playTrack, setQueue, getFilteredTracks]
+  )
 
   return (
     <div className="h-screen flex flex-col">
