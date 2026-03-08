@@ -7,10 +7,12 @@ import {
   deleteTrackFile,
   getTrackFilePath
 } from './audio-manager'
+import { downloadAudio, getVideoInfo } from './downloader'
 
 export function registerIpcHandlers(): void {
   registerDbHandlers()
   registerAudioHandlers()
+  registerDownloadHandlers()
 }
 
 function registerDbHandlers(): void {
@@ -151,5 +153,17 @@ function registerAudioHandlers(): void {
 
   ipcMain.handle('audio:get-file-path', (_event, trackId: string) => {
     return getTrackFilePath(trackId)
+  })
+}
+
+function registerDownloadHandlers(): void {
+  ipcMain.handle('download:info', async (_event, url: string) => {
+    return getVideoInfo(url)
+  })
+
+  ipcMain.handle('download:from-url', async (event, url: string) => {
+    return downloadAudio(url, (progress) => {
+      event.sender.send('download:progress', progress)
+    })
   })
 }

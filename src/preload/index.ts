@@ -32,9 +32,10 @@ const api = {
       ipcRenderer.invoke('audio:import-dropped-files', paths)
   },
   download: {
+    getInfo: (url: string) => ipcRenderer.invoke('download:info', url),
     fromUrl: (url: string) => ipcRenderer.invoke('download:from-url', url),
-    onProgress: (callback: (progress: number) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, progress: number): void => {
+    onProgress: (callback: (progress: { percent: number; speed: string; eta: string; status: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: { percent: number; speed: string; eta: string; status: string }): void => {
         callback(progress)
       }
       ipcRenderer.on('download:progress', handler)

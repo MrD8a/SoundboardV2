@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar'
 import { PlayerBar } from './components/Player'
 import { LibraryView } from './components/Library'
 import { PlaylistView } from './components/Playlist'
+import { DownloadView } from './components/Download'
 import { usePlayerStore } from './stores/player-store'
 import { useLibraryStore } from './stores/library-store'
 import type { Track } from './types'
@@ -53,11 +54,7 @@ function App(): React.JSX.Element {
           {activeView === 'playlists' && (
             <PlaylistView onPlayTrack={handlePlayTrackFromPlaylist} />
           )}
-          {activeView === 'download' && (
-            <p className="text-obsidian-400 text-sm">
-              Paste a YouTube URL to download audio tracks.
-            </p>
-          )}
+          {activeView === 'download' && <DownloadView />}
           {activeView === 'discord' && (
             <p className="text-obsidian-400 text-sm">
               Connect your Discord bot and stream audio to voice channels.
