@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { PlayerBar } from './components/Player'
 import { LibraryView } from './components/Library'
+import { PlaylistView } from './components/Playlist'
 import { usePlayerStore } from './stores/player-store'
 import { useLibraryStore } from './stores/library-store'
 import type { Track } from './types'
@@ -19,7 +20,7 @@ function App(): React.JSX.Element {
   const setQueue = usePlayerStore((s) => s.setQueue)
   const getFilteredTracks = useLibraryStore((s) => s.getFilteredTracks)
 
-  const handlePlayTrack = useCallback(
+  const handlePlayTrackFromLibrary = useCallback(
     (track: Track) => {
       const allTracks = getFilteredTracks()
       const idx = allTracks.findIndex((t) => t.id === track.id)
@@ -27,6 +28,15 @@ function App(): React.JSX.Element {
       playTrack(track, allTracks)
     },
     [playTrack, setQueue, getFilteredTracks]
+  )
+
+  const handlePlayTrackFromPlaylist = useCallback(
+    (track: Track, queue: Track[]) => {
+      const idx = queue.findIndex((t) => t.id === track.id)
+      setQueue(queue, idx >= 0 ? idx : 0)
+      playTrack(track, queue)
+    },
+    [playTrack, setQueue]
   )
 
   return (
@@ -37,9 +47,11 @@ function App(): React.JSX.Element {
           <h2 className="text-2xl font-display font-bold text-parchment-200 mb-6">
             {viewLabels[activeView] ?? activeView}
           </h2>
-          {activeView === 'library' && <LibraryView onPlayTrack={handlePlayTrack} />}
+          {activeView === 'library' && (
+            <LibraryView onPlayTrack={handlePlayTrackFromLibrary} />
+          )}
           {activeView === 'playlists' && (
-            <p className="text-obsidian-400 text-sm">Create and manage your playlists here.</p>
+            <PlaylistView onPlayTrack={handlePlayTrackFromPlaylist} />
           )}
           {activeView === 'download' && (
             <p className="text-obsidian-400 text-sm">
