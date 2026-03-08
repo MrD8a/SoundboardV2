@@ -60,6 +60,20 @@ const api = {
       ipcRenderer.on('discord:status-change', handler)
       return () => ipcRenderer.removeListener('discord:status-change', handler)
     }
+  },
+  shortcuts: {
+    onPlayPause: (callback: () => void) => {
+      ipcRenderer.on('shortcut:play-pause', callback)
+      return () => ipcRenderer.removeListener('shortcut:play-pause', callback)
+    },
+    onNext: (callback: () => void) => {
+      ipcRenderer.on('shortcut:next', callback)
+      return () => ipcRenderer.removeListener('shortcut:next', callback)
+    },
+    onPrevious: (callback: () => void) => {
+      ipcRenderer.on('shortcut:previous', callback)
+      return () => ipcRenderer.removeListener('shortcut:previous', callback)
+    }
   }
 }
 

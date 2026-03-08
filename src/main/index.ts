@@ -1,7 +1,7 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { initDatabase } from './services/database'
+import { initDatabase, closeDatabase } from './services/database'
 import { registerIpcHandlers } from './services/ipc-handlers'
 
 let mainWindow: BrowserWindow | null = null
@@ -49,6 +49,8 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   createWindow()
 
+  registerGlobalShortcuts()
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -61,3 +63,22 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+  closeDatabase()
+})
+
+function registerGlobalShortcuts(): void {
+  globalShortcut.register('MediaPlayPause', () => {
+    mainWindow?.webContents.send('shortcut:play-pause')
+  })
+
+  globalShortcut.register('MediaNextTrack', () => {
+    mainWindow?.webContents.send('shortcut:next')
+  })
+
+  globalShortcut.register('MediaPreviousTrack', () => {
+    mainWindow?.webContents.send('shortcut:previous')
+  })
+}
