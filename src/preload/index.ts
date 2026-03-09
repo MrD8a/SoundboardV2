@@ -8,10 +8,10 @@ const api = {
     deleteTrack: (id: string) => ipcRenderer.invoke('db:delete-track', id),
     getPlaylists: () => ipcRenderer.invoke('db:get-playlists'),
     getPlaylist: (id: string) => ipcRenderer.invoke('db:get-playlist', id),
-    createPlaylist: (name: string, description?: string) =>
-      ipcRenderer.invoke('db:create-playlist', name, description),
-    updatePlaylist: (id: string, name: string, description?: string) =>
-      ipcRenderer.invoke('db:update-playlist', id, name, description),
+    createPlaylist: (name: string, description?: string, icon?: string) =>
+      ipcRenderer.invoke('db:create-playlist', name, description, icon),
+    updatePlaylist: (id: string, name: string, description?: string, icon?: string) =>
+      ipcRenderer.invoke('db:update-playlist', id, name, description, icon),
     deletePlaylist: (id: string) => ipcRenderer.invoke('db:delete-playlist', id),
     getPlaylistTracks: (playlistId: string) =>
       ipcRenderer.invoke('db:get-playlist-tracks', playlistId),

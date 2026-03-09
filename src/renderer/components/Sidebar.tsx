@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePlaylistStore } from '../stores/playlist-store'
+import { PlaylistIconGlyph } from '../lib/playlist-icons'
 
 interface SidebarProps {
   activeView: string
@@ -187,6 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
                                     : 'text-obsidian-400 hover:bg-obsidian-800 hover:text-obsidian-100'
                               }`}
                             >
+                              <PlaylistIconGlyph icon={playlist.icon} className="mr-2 h-4 w-4 flex-shrink-0" />
                               <span className="truncate">{playlist.name}</span>
                             </button>
                           )

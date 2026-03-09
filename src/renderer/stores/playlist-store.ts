@@ -8,8 +8,8 @@ interface PlaylistState {
   isLoading: boolean
 
   loadPlaylists: () => Promise<void>
-  createPlaylist: (name: string, description?: string) => Promise<Playlist>
-  updatePlaylist: (id: string, name: string, description?: string) => Promise<void>
+  createPlaylist: (name: string, description?: string, icon?: string) => Promise<Playlist>
+  updatePlaylist: (id: string, name: string, description?: string, icon?: string) => Promise<void>
   deletePlaylist: (id: string) => Promise<void>
   selectPlaylist: (id: string | null) => Promise<void>
   addTrackToPlaylist: (playlistId: string, trackId: string) => Promise<void>
@@ -33,14 +33,14 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     }
   },
 
-  createPlaylist: async (name: string, description?: string) => {
-    const playlist = await window.api.db.createPlaylist(name, description)
+  createPlaylist: async (name: string, description?: string, icon?: string) => {
+    const playlist = await window.api.db.createPlaylist(name, description, icon)
     await get().loadPlaylists()
     return playlist as Playlist
   },
 
-  updatePlaylist: async (id: string, name: string, description?: string) => {
-    await window.api.db.updatePlaylist(id, name, description)
+  updatePlaylist: async (id: string, name: string, description?: string, icon?: string) => {
+    await window.api.db.updatePlaylist(id, name, description, icon)
     await get().loadPlaylists()
     if (get().selectedPlaylistId === id) {
       await get().selectPlaylist(id)

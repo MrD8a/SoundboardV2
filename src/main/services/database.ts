@@ -54,6 +54,7 @@ function runMigrations(): void {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT DEFAULT '',
+      icon TEXT NOT NULL DEFAULT 'music',
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
     );
@@ -72,6 +73,14 @@ function runMigrations(): void {
       value TEXT NOT NULL
     );
   `)
+
+  const playlistColumns = db.prepare("PRAGMA table_info('playlists')").all() as Array<{
+    name: string
+  }>
+
+  if (!playlistColumns.some((column) => column.name === 'icon')) {
+    db.exec("ALTER TABLE playlists ADD COLUMN icon TEXT NOT NULL DEFAULT 'music'")
+  }
 }
 
 export function closeDatabase(): void {

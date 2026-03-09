@@ -67,23 +67,23 @@ function registerDbHandlers(): void {
 
   ipcMain.handle(
     'db:create-playlist',
-    (_event, name: string, description?: string) => {
+    (_event, name: string, description?: string, icon?: string) => {
       const id = uuidv4()
       getDb()
-        .prepare('INSERT INTO playlists (id, name, description) VALUES (?, ?, ?)')
-        .run(id, name, description ?? '')
+        .prepare('INSERT INTO playlists (id, name, description, icon) VALUES (?, ?, ?, ?)')
+        .run(id, name, description ?? '', icon ?? 'music')
       return getDb().prepare('SELECT * FROM playlists WHERE id = ?').get(id)
     }
   )
 
   ipcMain.handle(
     'db:update-playlist',
-    (_event, id: string, name: string, description?: string) => {
+    (_event, id: string, name: string, description?: string, icon?: string) => {
       getDb()
         .prepare(
-          "UPDATE playlists SET name = ?, description = ?, updatedAt = datetime('now') WHERE id = ?"
+          "UPDATE playlists SET name = ?, description = ?, icon = COALESCE(?, icon), updatedAt = datetime('now') WHERE id = ?"
         )
-        .run(name, description ?? '', id)
+        .run(name, description ?? '', icon ?? null, id)
       return getDb().prepare('SELECT * FROM playlists WHERE id = ?').get(id)
     }
   )
