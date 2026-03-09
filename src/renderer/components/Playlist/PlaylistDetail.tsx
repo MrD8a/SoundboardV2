@@ -2,6 +2,8 @@ import React, { useCallback, useRef } from 'react'
 import { usePlaylistStore } from '../../stores/playlist-store'
 import { formatDuration } from '../../lib/format'
 import type { Track } from '../../types'
+import { TrackContextMenu } from '../TrackContextMenu'
+import { useLibraryStore } from '../../stores/library-store'
 
 interface PlaylistDetailProps {
   onBack: () => void
@@ -14,12 +16,20 @@ export const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ onBack, onPlayTr
     selectedPlaylistId,
     selectedPlaylistTracks,
     removeTrackFromPlaylist,
-    reorderTracks
+    reorderTracks,
+    addTrackToPlaylist,
+    selectPlaylist
   } = usePlaylistStore()
+  const { renameTrack, deleteTrack } = useLibraryStore()
 
   const playlist = playlists.find((p) => p.id === selectedPlaylistId)
   const dragItem = useRef<number | null>(null)
   const dragOverItem = useRef<number | null>(null)
+  const [contextMenu, setContextMenu] = React.useState<{
+    track: Track
+    x: number
+    y: number
+  } | null>(null)
 
   const handleDragStart = useCallback((index: number) => {
     dragItem.current = index
@@ -53,6 +63,37 @@ export const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ onBack, onPlayTr
     dragItem.current = null
     dragOverItem.current = null
   }, [selectedPlaylistTracks, selectedPlaylistId, reorderTracks])
+
+  const handleTrackContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>, track: Track) => {
+    event.preventDefault()
+    setContextMenu({
+      track,
+      x: event.clientX,
+      y: event.clientY
+    })
+  }, [])
+
+  const handleRenameTrack = useCallback(
+    async (track: Track) => {
+      const nextTitle = window.prompt('Rename track', track.title)?.trim()
+      if (!nextTitle || nextTitle === track.title) return
+      await renameTrack(track.id, nextTitle)
+      if (selectedPlaylistId) {
+        await selectPlaylist(selectedPlaylistId)
+      }
+    },
+    [renameTrack, selectedPlaylistId, selectPlaylist]
+  )
+
+  const handleDeleteTrack = useCallback(
+    async (trackId: string) => {
+      await deleteTrack(trackId)
+      if (selectedPlaylistId) {
+        await selectPlaylist(selectedPlaylistId)
+      }
+    },
+    [deleteTrack, selectedPlaylistId, selectPlaylist]
+  )
 
   if (!playlist) return null
 
@@ -104,6 +145,7 @@ export const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ onBack, onPlayTr
               onDragEnter={() => handleDragEnter(index)}
               onDragEnd={handleDragEnd}
               onDragOver={(e) => e.preventDefault()}
+              onContextMenu={(event) => handleTrackContextMenu(event, track)}
               className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-obsidian-800/50 group cursor-grab active:cursor-grabbing transition-colors"
             >
               <span className="w-6 text-obsidian-500 cursor-grab">
@@ -147,6 +189,22 @@ export const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ onBack, onPlayTr
             </div>
           ))}
         </div>
+      )}
+
+      {contextMenu && (
+        <TrackContextMenu
+          track={contextMenu.track}
+          playlists={playlists}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          showRemoveFromPlaylist
+          onRename={() => void handleRenameTrack(contextMenu.track)}
+          onAddToPlaylist={(playlistId) => void addTrackToPlaylist(playlistId, contextMenu.track.id)}
+          onDelete={() => void handleDeleteTrack(contextMenu.track.id)}
+          onRemoveFromPlaylist={() =>
+            void removeTrackFromPlaylist(playlist.id, contextMenu.track.id)
+          }
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   )

@@ -11,6 +11,7 @@ interface LibraryState {
   loadTracks: () => Promise<void>
   importFiles: () => Promise<void>
   importDroppedFiles: (paths: string[]) => Promise<void>
+  renameTrack: (id: string, title: string) => Promise<void>
   deleteTrack: (id: string) => Promise<void>
   setSearchQuery: (query: string) => void
   setSortBy: (sortBy: LibraryState['sortBy']) => void
@@ -50,6 +51,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     } finally {
       set({ isLoading: false })
     }
+  },
+
+  renameTrack: async (id: string, title: string) => {
+    const updated = await window.api.db.updateTrack(id, title)
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === id ? ({ ...track, ...(updated as Track) }) : track
+      )
+    }))
   },
 
   deleteTrack: async (id: string) => {

@@ -2,6 +2,8 @@ import React, { useEffect, useCallback } from 'react'
 import { useLibraryStore } from '../../stores/library-store'
 import { TrackRow } from './TrackRow'
 import type { Track } from '../../types'
+import { usePlaylistStore } from '../../stores/playlist-store'
+import { TrackContextMenu } from '../TrackContextMenu'
 
 interface LibraryViewProps {
   onPlayTrack: (track: Track) => void
@@ -15,16 +17,27 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onPlayTrack }) => {
     loadTracks,
     importFiles,
     importDroppedFiles,
+    renameTrack,
     deleteTrack,
     setSearchQuery,
     setSortBy,
     toggleSortOrder,
     getFilteredTracks
   } = useLibraryStore()
+  const { playlists, loadPlaylists, addTrackToPlaylist } = usePlaylistStore()
+  const [contextMenu, setContextMenu] = React.useState<{
+    track: Track
+    x: number
+    y: number
+  } | null>(null)
 
   useEffect(() => {
     loadTracks()
   }, [loadTracks])
+
+  useEffect(() => {
+    void loadPlaylists()
+  }, [loadPlaylists])
 
   const filteredTracks = getFilteredTracks()
 
@@ -46,6 +59,24 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onPlayTrack }) => {
       }
     },
     [importDroppedFiles]
+  )
+
+  const handleTrackContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>, track: Track) => {
+    event.preventDefault()
+    setContextMenu({
+      track,
+      x: event.clientX,
+      y: event.clientY
+    })
+  }, [])
+
+  const handleRenameTrack = useCallback(
+    async (track: Track) => {
+      const nextTitle = window.prompt('Rename track', track.title)?.trim()
+      if (!nextTitle || nextTitle === track.title) return
+      await renameTrack(track.id, nextTitle)
+    },
+    [renameTrack]
   )
 
   return (
@@ -142,9 +173,22 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onPlayTrack }) => {
               index={index}
               onPlay={onPlayTrack}
               onDelete={deleteTrack}
+              onContextMenu={handleTrackContextMenu}
             />
           ))}
         </div>
+      )}
+
+      {contextMenu && (
+        <TrackContextMenu
+          track={contextMenu.track}
+          playlists={playlists}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onRename={() => void handleRenameTrack(contextMenu.track)}
+          onAddToPlaylist={(playlistId) => void addTrackToPlaylist(playlistId, contextMenu.track.id)}
+          onDelete={() => void deleteTrack(contextMenu.track.id)}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   )

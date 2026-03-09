@@ -44,6 +44,13 @@ function registerDbHandlers(): void {
     return true
   })
 
+  ipcMain.handle('db:update-track', (_event, id: string, title: string) => {
+    getDb()
+      .prepare("UPDATE tracks SET title = ?, createdAt = createdAt WHERE id = ?")
+      .run(title, id)
+    return getDb().prepare('SELECT * FROM tracks WHERE id = ?').get(id)
+  })
+
   ipcMain.handle('db:get-playlists', () => {
     return getDb().prepare('SELECT * FROM playlists ORDER BY updatedAt DESC').all()
   })

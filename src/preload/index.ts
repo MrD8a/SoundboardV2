@@ -4,6 +4,7 @@ const api = {
   db: {
     getTracks: () => ipcRenderer.invoke('db:get-tracks'),
     getTrack: (id: string) => ipcRenderer.invoke('db:get-track', id),
+    updateTrack: (id: string, title: string) => ipcRenderer.invoke('db:update-track', id, title),
     deleteTrack: (id: string) => ipcRenderer.invoke('db:delete-track', id),
     getPlaylists: () => ipcRenderer.invoke('db:get-playlists'),
     getPlaylist: (id: string) => ipcRenderer.invoke('db:get-playlist', id),

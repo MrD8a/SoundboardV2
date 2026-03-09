@@ -7,9 +7,10 @@ interface TrackRowProps {
   index: number
   onPlay: (track: Track) => void
   onDelete: (id: string) => void
+  onContextMenu?: (event: React.MouseEvent<HTMLDivElement>, track: Track) => void
 }
 
-export const TrackRow: React.FC<TrackRowProps> = ({ track, index, onPlay, onDelete }) => {
+export const TrackRow: React.FC<TrackRowProps> = ({ track, index, onPlay, onDelete, onContextMenu }) => {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>): void => {
     e.dataTransfer.effectAllowed = 'copy'
     e.dataTransfer.setData('application/x-soundboard-track-id', track.id)
@@ -20,6 +21,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({ track, index, onPlay, onDele
     <div
       draggable
       onDragStart={handleDragStart}
+      onContextMenu={(event) => onContextMenu?.(event, track)}
       className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-obsidian-800/50 group transition-colors cursor-grab active:cursor-grabbing"
     >
       <span className="w-8 text-right text-xs text-obsidian-500 group-hover:hidden">
