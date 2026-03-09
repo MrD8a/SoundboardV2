@@ -167,7 +167,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
                         <div className="px-3 py-2 text-xs text-obsidian-500">No playlists yet</div>
                       ) : (
                         playlists.map((playlist) => {
-                          const isSelected = selectedPlaylistId === playlist.id
+                          const isSelected =
+                            activeView === 'playlists' && selectedPlaylistId === playlist.id
                           const isDropTarget = dragOverPlaylistId === playlist.id
 
                           return (

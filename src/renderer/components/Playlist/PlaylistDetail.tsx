@@ -4,6 +4,7 @@ import { formatDuration } from '../../lib/format'
 import type { Track } from '../../types'
 import { TrackContextMenu } from '../TrackContextMenu'
 import { useLibraryStore } from '../../stores/library-store'
+import { TrackRenameDialog } from '../TrackRenameDialog'
 
 interface PlaylistDetailProps {
   onBack: () => void
@@ -30,6 +31,7 @@ export const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ onBack, onPlayTr
     x: number
     y: number
   } | null>(null)
+  const [renameTrackTarget, setRenameTrackTarget] = React.useState<Track | null>(null)
 
   const handleDragStart = useCallback((index: number) => {
     dragItem.current = index
@@ -74,10 +76,8 @@ export const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ onBack, onPlayTr
   }, [])
 
   const handleRenameTrack = useCallback(
-    async (track: Track) => {
-      const nextTitle = window.prompt('Rename track', track.title)?.trim()
-      if (!nextTitle || nextTitle === track.title) return
-      await renameTrack(track.id, nextTitle)
+    async (trackId: string, nextTitle: string) => {
+      await renameTrack(trackId, nextTitle)
       if (selectedPlaylistId) {
         await selectPlaylist(selectedPlaylistId)
       }
@@ -197,13 +197,21 @@ export const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ onBack, onPlayTr
           playlists={playlists}
           position={{ x: contextMenu.x, y: contextMenu.y }}
           showRemoveFromPlaylist
-          onRename={() => void handleRenameTrack(contextMenu.track)}
+          onRename={() => setRenameTrackTarget(contextMenu.track)}
           onAddToPlaylist={(playlistId) => void addTrackToPlaylist(playlistId, contextMenu.track.id)}
           onDelete={() => void handleDeleteTrack(contextMenu.track.id)}
           onRemoveFromPlaylist={() =>
             void removeTrackFromPlaylist(playlist.id, contextMenu.track.id)
           }
           onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {renameTrackTarget && (
+        <TrackRenameDialog
+          track={renameTrackTarget}
+          onSave={(nextTitle) => handleRenameTrack(renameTrackTarget.id, nextTitle)}
+          onClose={() => setRenameTrackTarget(null)}
         />
       )}
     </div>

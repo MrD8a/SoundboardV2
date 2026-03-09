@@ -4,6 +4,7 @@ import { TrackRow } from './TrackRow'
 import type { Track } from '../../types'
 import { usePlaylistStore } from '../../stores/playlist-store'
 import { TrackContextMenu } from '../TrackContextMenu'
+import { TrackRenameDialog } from '../TrackRenameDialog'
 
 interface LibraryViewProps {
   onPlayTrack: (track: Track) => void
@@ -30,6 +31,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onPlayTrack }) => {
     x: number
     y: number
   } | null>(null)
+  const [renameTrackTarget, setRenameTrackTarget] = React.useState<Track | null>(null)
 
   useEffect(() => {
     loadTracks()
@@ -71,10 +73,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onPlayTrack }) => {
   }, [])
 
   const handleRenameTrack = useCallback(
-    async (track: Track) => {
-      const nextTitle = window.prompt('Rename track', track.title)?.trim()
-      if (!nextTitle || nextTitle === track.title) return
-      await renameTrack(track.id, nextTitle)
+    async (trackId: string, nextTitle: string) => {
+      await renameTrack(trackId, nextTitle)
     },
     [renameTrack]
   )
@@ -184,10 +184,18 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onPlayTrack }) => {
           track={contextMenu.track}
           playlists={playlists}
           position={{ x: contextMenu.x, y: contextMenu.y }}
-          onRename={() => void handleRenameTrack(contextMenu.track)}
+          onRename={() => setRenameTrackTarget(contextMenu.track)}
           onAddToPlaylist={(playlistId) => void addTrackToPlaylist(playlistId, contextMenu.track.id)}
           onDelete={() => void deleteTrack(contextMenu.track.id)}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {renameTrackTarget && (
+        <TrackRenameDialog
+          track={renameTrackTarget}
+          onSave={(nextTitle) => handleRenameTrack(renameTrackTarget.id, nextTitle)}
+          onClose={() => setRenameTrackTarget(null)}
         />
       )}
     </div>

@@ -54,12 +54,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   renameTrack: async (id: string, title: string) => {
-    const updated = await window.api.db.updateTrack(id, title)
-    set((state) => ({
-      tracks: state.tracks.map((track) =>
-        track.id === id ? ({ ...track, ...(updated as Track) }) : track
-      )
-    }))
+    await window.api.db.updateTrack(id, title)
+    await get().loadTracks()
   },
 
   deleteTrack: async (id: string) => {

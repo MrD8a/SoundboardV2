@@ -45,9 +45,15 @@ function registerDbHandlers(): void {
   })
 
   ipcMain.handle('db:update-track', (_event, id: string, title: string) => {
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle) {
+      throw new Error('Track title cannot be empty')
+    }
+
     getDb()
-      .prepare("UPDATE tracks SET title = ?, createdAt = createdAt WHERE id = ?")
-      .run(title, id)
+      .prepare('UPDATE tracks SET title = ? WHERE id = ?')
+      .run(trimmedTitle, id)
+
     return getDb().prepare('SELECT * FROM tracks WHERE id = ?').get(id)
   })
 
