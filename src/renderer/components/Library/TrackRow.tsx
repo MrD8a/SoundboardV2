@@ -10,8 +10,18 @@ interface TrackRowProps {
 }
 
 export const TrackRow: React.FC<TrackRowProps> = ({ track, index, onPlay, onDelete }) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>): void => {
+    e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData('application/x-soundboard-track-id', track.id)
+    e.dataTransfer.setData('text/plain', track.id)
+  }
+
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-obsidian-800/50 group transition-colors">
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-obsidian-800/50 group transition-colors cursor-grab active:cursor-grabbing"
+    >
       <span className="w-8 text-right text-xs text-obsidian-500 group-hover:hidden">
         {index + 1}
       </span>

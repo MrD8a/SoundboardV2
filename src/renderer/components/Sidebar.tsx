@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { usePlaylistStore } from '../stores/playlist-store'
 
 interface SidebarProps {
   activeView: string
@@ -13,6 +14,79 @@ const navItems = [
 ]
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
+  const { playlists, selectedPlaylistId, loadPlaylists, selectPlaylist, addTrackToPlaylist } =
+    usePlaylistStore()
+  const [isPlaylistMenuOpen, setIsPlaylistMenuOpen] = useState(activeView === 'playlists')
+  const [dragOverPlaylistId, setDragOverPlaylistId] = useState<string | null>(null)
+
+  useEffect(() => {
+    void loadPlaylists()
+  }, [loadPlaylists])
+
+  useEffect(() => {
+    if (activeView === 'playlists') {
+      setIsPlaylistMenuOpen(true)
+    }
+  }, [activeView])
+
+  const navItemsWithState = useMemo(
+    () =>
+      navItems.map((item) => ({
+        ...item,
+        isActive: activeView === item.id
+      })),
+    [activeView]
+  )
+
+  const handlePlaylistToggle = useCallback(() => {
+    setIsPlaylistMenuOpen((open) => !open)
+    onViewChange('playlists')
+    void selectPlaylist(null)
+  }, [onViewChange, selectPlaylist])
+
+  const handlePlaylistSelect = useCallback(
+    async (playlistId: string) => {
+      onViewChange('playlists')
+      await selectPlaylist(playlistId)
+    },
+    [onViewChange, selectPlaylist]
+  )
+
+  const getDraggedTrackId = (e: React.DragEvent): string => {
+    return e.dataTransfer.getData('application/x-soundboard-track-id')
+  }
+
+  const handlePlaylistDragOver = useCallback((e: React.DragEvent, playlistId: string) => {
+    const trackId = getDraggedTrackId(e)
+    if (!trackId) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setIsPlaylistMenuOpen(true)
+    setDragOverPlaylistId(playlistId)
+  }, [])
+
+  const handlePlaylistDrop = useCallback(
+    async (e: React.DragEvent, playlistId: string) => {
+      const trackId = getDraggedTrackId(e)
+      setDragOverPlaylistId(null)
+      if (!trackId) return
+      e.preventDefault()
+      await addTrackToPlaylist(playlistId, trackId)
+    },
+    [addTrackToPlaylist]
+  )
+
+  const handlePlaylistDragLeave = useCallback((playlistId: string) => {
+    setDragOverPlaylistId((current) => (current === playlistId ? null : current))
+  }, [])
+
+  const handlePlaylistMenuDragOver = useCallback((e: React.DragEvent) => {
+    const trackId = getDraggedTrackId(e)
+    if (!trackId) return
+    e.preventDefault()
+    setIsPlaylistMenuOpen(true)
+  }, [])
+
   return (
     <aside className="w-56 bg-obsidian-900 border-r border-obsidian-700 flex flex-col">
       {/* Logo */}
@@ -24,21 +98,78 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-1">
-        {navItems.map((item) => {
-          const isActive = activeView === item.id
+        {navItemsWithState.map((item) => {
           return (
-            <button
-              key={item.id}
-              onClick={() => onViewChange(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-arcane-600/20 text-arcane-400'
-                  : 'text-obsidian-300 hover:text-obsidian-100 hover:bg-obsidian-800'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </button>
+            <div key={item.id}>
+              {item.id === 'playlists' ? (
+                <>
+                  <button
+                    onClick={handlePlaylistToggle}
+                    onDragOver={handlePlaylistMenuDragOver}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      item.isActive
+                        ? 'bg-arcane-600/20 text-arcane-400'
+                        : 'text-obsidian-300 hover:text-obsidian-100 hover:bg-obsidian-800'
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${isPlaylistMenuOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isPlaylistMenuOpen && (
+                    <div className="mt-1 ml-4 space-y-1">
+                      {playlists.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-obsidian-500">No playlists yet</div>
+                      ) : (
+                        playlists.map((playlist) => {
+                          const isSelected = selectedPlaylistId === playlist.id
+                          const isDropTarget = dragOverPlaylistId === playlist.id
+
+                          return (
+                            <button
+                              key={playlist.id}
+                              onClick={() => void handlePlaylistSelect(playlist.id)}
+                              onDragOver={(e) => handlePlaylistDragOver(e, playlist.id)}
+                              onDragLeave={() => handlePlaylistDragLeave(playlist.id)}
+                              onDrop={(e) => void handlePlaylistDrop(e, playlist.id)}
+                              className={`w-full flex items-center rounded-lg px-3 py-2 text-left text-xs transition-colors ${
+                                isDropTarget
+                                  ? 'bg-parchment-400/15 text-parchment-200 ring-1 ring-parchment-400/40'
+                                  : isSelected
+                                    ? 'bg-arcane-600/20 text-arcane-300'
+                                    : 'text-obsidian-400 hover:bg-obsidian-800 hover:text-obsidian-100'
+                              }`}
+                            >
+                              <span className="truncate">{playlist.name}</span>
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button
+                  onClick={() => onViewChange(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    item.isActive
+                      ? 'bg-arcane-600/20 text-arcane-400'
+                      : 'text-obsidian-300 hover:text-obsidian-100 hover:bg-obsidian-800'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </button>
+              )}
+            </div>
           )
         })}
       </nav>
