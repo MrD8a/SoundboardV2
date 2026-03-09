@@ -38,11 +38,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
     [activeView]
   )
 
-  const handlePlaylistToggle = useCallback(() => {
-    setIsPlaylistMenuOpen((open) => !open)
+  const handlePlaylistHeaderClick = useCallback(() => {
     onViewChange('playlists')
     void selectPlaylist(null)
   }, [onViewChange, selectPlaylist])
+
+  const handlePlaylistToggle = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setIsPlaylistMenuOpen((open) => !open)
+  }, [])
 
   const handlePlaylistSelect = useCallback(
     async (playlistId: string) => {
@@ -52,15 +56,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
     [onViewChange, selectPlaylist]
   )
 
+  const hasDraggedTrack = (e: React.DragEvent): boolean => {
+    return (
+      Array.from(e.dataTransfer.types).includes('application/x-soundboard-track-id') ||
+      Array.from(e.dataTransfer.types).includes('text/plain')
+    )
+  }
+
   const getDraggedTrackId = (e: React.DragEvent): string => {
-    return e.dataTransfer.getData('application/x-soundboard-track-id')
+    return (
+      e.dataTransfer.getData('application/x-soundboard-track-id') ||
+      e.dataTransfer.getData('text/plain')
+    )
   }
 
   const handlePlaylistDragOver = useCallback((e: React.DragEvent, playlistId: string) => {
-    const trackId = getDraggedTrackId(e)
-    if (!trackId) return
+    if (!hasDraggedTrack(e)) return
     e.preventDefault()
+    e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
+    setIsPlaylistMenuOpen(true)
+    setDragOverPlaylistId(playlistId)
+  }, [])
+
+  const handlePlaylistDragEnter = useCallback((e: React.DragEvent, playlistId: string) => {
+    if (!hasDraggedTrack(e)) return
+    e.preventDefault()
     setIsPlaylistMenuOpen(true)
     setDragOverPlaylistId(playlistId)
   }, [])
@@ -68,9 +89,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
   const handlePlaylistDrop = useCallback(
     async (e: React.DragEvent, playlistId: string) => {
       const trackId = getDraggedTrackId(e)
+      e.preventDefault()
+      e.stopPropagation()
       setDragOverPlaylistId(null)
       if (!trackId) return
-      e.preventDefault()
       await addTrackToPlaylist(playlistId, trackId)
     },
     [addTrackToPlaylist]
@@ -81,8 +103,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
   }, [])
 
   const handlePlaylistMenuDragOver = useCallback((e: React.DragEvent) => {
-    const trackId = getDraggedTrackId(e)
-    if (!trackId) return
+    if (!hasDraggedTrack(e)) return
+    e.preventDefault()
+    e.stopPropagation()
+    setIsPlaylistMenuOpen(true)
+  }, [])
+
+  const handlePlaylistMenuDragEnter = useCallback((e: React.DragEvent) => {
+    if (!hasDraggedTrack(e)) return
     e.preventDefault()
     setIsPlaylistMenuOpen(true)
   }, [])
@@ -102,27 +130,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
           return (
             <div key={item.id}>
               {item.id === 'playlists' ? (
-                <>
-                  <button
-                    onClick={handlePlaylistToggle}
-                    onDragOver={handlePlaylistMenuDragOver}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                <div onDragEnter={handlePlaylistMenuDragEnter} onDragOver={handlePlaylistMenuDragOver}>
+                  <div
+                    className={`w-full flex items-center rounded-lg text-sm font-medium transition-colors ${
                       item.isActive
                         ? 'bg-arcane-600/20 text-arcane-400'
                         : 'text-obsidian-300 hover:text-obsidian-100 hover:bg-obsidian-800'
                     }`}
                   >
-                    <item.icon className="w-5 h-5" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    <svg
-                      className={`w-4 h-4 transition-transform ${isPlaylistMenuOpen ? 'rotate-180' : ''}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                    <button
+                      onClick={handlePlaylistHeaderClick}
+                      className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                      <item.icon className="w-5 h-5" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                    </button>
+                    <button
+                      onClick={(e) => handlePlaylistToggle(e)}
+                      className="px-3 py-2.5 text-obsidian-400 hover:text-obsidian-100"
+                      title={isPlaylistMenuOpen ? 'Collapse playlists' : 'Expand playlists'}
+                    >
+                      <svg
+                        className={`w-4 h-4 transition-transform ${isPlaylistMenuOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
 
                   {isPlaylistMenuOpen && (
                     <div className="mt-1 ml-4 space-y-1">
@@ -137,6 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
                             <button
                               key={playlist.id}
                               onClick={() => void handlePlaylistSelect(playlist.id)}
+                              onDragEnter={(e) => handlePlaylistDragEnter(e, playlist.id)}
                               onDragOver={(e) => handlePlaylistDragOver(e, playlist.id)}
                               onDragLeave={() => handlePlaylistDragLeave(playlist.id)}
                               onDrop={(e) => void handlePlaylistDrop(e, playlist.id)}
@@ -155,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
                       )}
                     </div>
                   )}
-                </>
+                </div>
               ) : (
                 <button
                   onClick={() => onViewChange(item.id)}
