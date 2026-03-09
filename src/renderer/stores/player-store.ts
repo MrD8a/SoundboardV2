@@ -44,6 +44,10 @@ function shouldMirror(): boolean {
   return useDiscordStore.getState().isInChannel
 }
 
+function getSafeDuration(value: number): number {
+  return Number.isFinite(value) && value > 0 ? value : 0
+}
+
 async function resolveFilePath(track: Track): Promise<string | null> {
   try {
     return await window.api.audio.getFilePath(track.id)
@@ -85,14 +89,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       volume: state.volume,
       html5: true,
       onload: () => {
-        set({ duration: howl.duration() })
+        const loadedDuration = getSafeDuration(howl.duration())
+        if (loadedDuration > 0) {
+          set({ duration: loadedDuration })
+        }
       },
       onplay: () => {
         set({ isPlaying: true })
         const interval = setInterval(() => {
           const h = get()._howl
           if (h && h.playing()) {
-            set({ progress: h.seek() as number })
+            const loadedDuration = getSafeDuration(h.duration())
+            const nextProgress = h.seek() as number
+            if (loadedDuration > 0 && get().duration !== loadedDuration) {
+              set({ duration: loadedDuration })
+            }
+            if (Number.isFinite(nextProgress) && nextProgress >= 0) {
+              set({ progress: nextProgress })
+            }
           }
         }, 250)
         set({ _progressInterval: interval })
@@ -120,7 +134,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     })
 
     howl.play()
-    set({ currentTrack: track, _howl: howl, progress: 0 })
+    set({ currentTrack: track, _howl: howl, progress: 0, duration: getSafeDuration(track.duration) })
 
     if (shouldMirror()) {
       resolveFilePath(track).then((fp) => {

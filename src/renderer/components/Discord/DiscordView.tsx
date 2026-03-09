@@ -32,9 +32,27 @@ export const DiscordView: React.FC = () => {
     return cleanup
   }, [setStatus])
 
+  useEffect(() => {
+    let isMounted = true
+
+    void window.api.db.getSetting('discord.botToken').then((savedToken) => {
+      if (isMounted && typeof savedToken === 'string' && savedToken.length > 0) {
+        setToken(savedToken)
+      }
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   const handleConnect = useCallback(async () => {
     if (!token.trim()) return
-    await connect(token.trim())
+    const trimmedToken = token.trim()
+    await connect(trimmedToken)
+    if (!useDiscordStore.getState().error) {
+      await window.api.db.setSetting('discord.botToken', trimmedToken)
+    }
   }, [token, connect])
 
   const statusColor: Record<string, string> = {

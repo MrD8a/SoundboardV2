@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react'
+import React, { useRef, useCallback, useEffect } from 'react'
 import { usePlayerStore } from '../../stores/player-store'
 import { formatDuration } from '../../lib/format'
 import type { RepeatMode } from '../../types'
@@ -26,26 +26,79 @@ export const PlayerBar: React.FC = () => {
 
   const progressRef = useRef<HTMLDivElement>(null)
   const volumeRef = useRef<HTMLDivElement>(null)
+  const draggingSliderRef = useRef<'progress' | 'volume' | null>(null)
 
-  const handleProgressClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!progressRef.current || !duration) return
+  const updateProgressFromClientX = useCallback(
+    (clientX: number) => {
+      if (!progressRef.current || !Number.isFinite(duration) || duration <= 0) return
       const rect = progressRef.current.getBoundingClientRect()
-      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
       seek(ratio * duration)
     },
     [duration, seek]
   )
 
-  const handleVolumeClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  const updateVolumeFromClientX = useCallback(
+    (clientX: number) => {
       if (!volumeRef.current) return
       const rect = volumeRef.current.getBoundingClientRect()
-      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
       setVolume(ratio)
     },
     [setVolume]
   )
+
+  const handleProgressClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      updateProgressFromClientX(e.clientX)
+    },
+    [updateProgressFromClientX]
+  )
+
+  const handleVolumeClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      updateVolumeFromClientX(e.clientX)
+    },
+    [updateVolumeFromClientX]
+  )
+
+  const handleProgressPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      draggingSliderRef.current = 'progress'
+      updateProgressFromClientX(e.clientX)
+    },
+    [updateProgressFromClientX]
+  )
+
+  const handleVolumePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      draggingSliderRef.current = 'volume'
+      updateVolumeFromClientX(e.clientX)
+    },
+    [updateVolumeFromClientX]
+  )
+
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent): void => {
+      if (draggingSliderRef.current === 'progress') {
+        updateProgressFromClientX(e.clientX)
+      } else if (draggingSliderRef.current === 'volume') {
+        updateVolumeFromClientX(e.clientX)
+      }
+    }
+
+    const handlePointerUp = (): void => {
+      draggingSliderRef.current = null
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [updateProgressFromClientX, updateVolumeFromClientX])
 
   const cycleRepeatMode = useCallback(() => {
     const idx = REPEAT_CYCLE.indexOf(repeatMode)
@@ -162,6 +215,7 @@ export const PlayerBar: React.FC = () => {
           <div
             ref={progressRef}
             onClick={handleProgressClick}
+            onPointerDown={handleProgressPointerDown}
             className="flex-1 h-1 bg-obsidian-700 rounded-full group cursor-pointer relative"
           >
             <div
@@ -198,6 +252,7 @@ export const PlayerBar: React.FC = () => {
         <div
           ref={volumeRef}
           onClick={handleVolumeClick}
+          onPointerDown={handleVolumePointerDown}
           className="flex-1 h-1 bg-obsidian-700 rounded-full cursor-pointer relative"
         >
           <div
